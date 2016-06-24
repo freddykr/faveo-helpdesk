@@ -12,7 +12,6 @@ use App\Model\helpdesk\Utility\Timezones;
 use App\User;
 use Artisan;
 // classes
-use Config;
 use File;
 use Hash;
 use Illuminate\Http\Request;
@@ -187,6 +186,10 @@ class InstallerApiController extends Controller
             $system->department = 1;
             $system->date_time_format = $date_time_format->id;
             $system->time_zone = $timezones->id;
+            $version = \Config::get('app.version');
+            $version = explode(' ', $version);
+            $version = $version[1];
+            $system->version = $version;
             $system->save();
 
             // Creating user
