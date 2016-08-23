@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Model\Common\TemplateType;
 use App\Model\helpdesk\Agent\Department;
 use App\Model\helpdesk\Email\Emails;
+use App\Model\helpdesk\Settings\CommonSettings;
 use App\Model\helpdesk\Settings\Company;
 use App\Model\helpdesk\Settings\Email;
 use App\User;
@@ -27,13 +28,14 @@ class PhpMailController extends Controller
      */
     public function sendmail($from, $to, $message, $template_variables)
     {
-        // dd($from);
-        $from_address = $this->fetch_smtp_details($from);
+        //        try {
+            // dd($from);
+            $from_address = $this->fetch_smtp_details($from);
         if ($from_address == null) {
             return $from_address;
         } else {
             // dd($from_address);
-            $username = $from_address->email_address;
+                $username = $from_address->email_address;
             $fromname = $from_address->email_name;
             $password = \Crypt::decrypt($from_address->password);
             $smtpsecure = $from_address->sending_encryption;
@@ -61,16 +63,16 @@ class PhpMailController extends Controller
             } else {
                 $bc = null;
             }
-//            if (isset($message['subject'])) {
-//                $subject = $message['subject'];
-//            } else {
-//                $subject = null;
-//            }
-            if (isset($message['body'])) {
-                $content = $message['body'];
-            } else {
-                $content = null;
-            }
+    //            if (isset($message['subject'])) {
+    //                $subject = $message['subject'];
+    //            } else {
+    //                $subject = null;
+    //            }
+                if (isset($message['body'])) {
+                    $content = $message['body'];
+                } else {
+                    $content = null;
+                }
             if (isset($message['scenario'])) {
                 $template = $message['scenario'];
             } else {
@@ -82,12 +84,19 @@ class PhpMailController extends Controller
                 $attachment = null;
             }
 
-            // template variables
-            if (Auth::user()) {
-                $agent = Auth::user()->user_name;
+            // Inline Attachments
+            if (isset($message['add_embedded_image'])) {
+                $add_embedded_images = $message['add_embedded_image'];
             } else {
-                $agent = null;
+                $add_embedded_images = null;
             }
+            
+                // template variables
+                if (Auth::user()) {
+                    $agent = Auth::user()->user_name;
+                } else {
+                    $agent = null;
+                }
             if (isset($template_variables['ticket_agent_name'])) {
                 $ticket_agent_name = $template_variables['ticket_agent_name'];
             } else {
@@ -123,15 +132,15 @@ class PhpMailController extends Controller
             } else {
                 $ticket_link_with_number = null;
             }
-            // if (isset($template_variables['system_from'])) {
-            //     $system_from = $template_variables['system_from'];
-            // } else {
-            //     $system_from = null;
-            // }
+            if (isset($template_variables['system_from'])) {
+                $system_from = $template_variables['system_from'];
+            } else {
+                $system_from = $this->company();
+            }
             if (isset($template_variables['system_link'])) {
                 $system_link = $template_variables['system_link'];
             } else {
-                $system_link = null;
+                $system_link = url('/');
             }
             if (isset($template_variables['system_error'])) {
                 $system_error = $template_variables['system_error'];
@@ -169,23 +178,23 @@ class PhpMailController extends Controller
                 $user = null;
             }
 
-            $system_link = url('/');
+//                $system_link = url('/');
 
-            $system_from = $this->company();
+//                $system_from = $this->company();
 
-            $mail = new \PHPMailer();
+                $mail = new \PHPMailer();
 
             $status = \DB::table('settings_email')->first();
 
             $path2 = \Config::get('view.paths');
 
-//            $directory = $path2[0].DIRECTORY_SEPARATOR.'emails'.DIRECTORY_SEPARATOR.$status->template.DIRECTORY_SEPARATOR;
-//
-//            $handle = fopen($directory.$template.'.blade.php', 'r');
-//            $contents = fread($handle, filesize($directory.$template.'.blade.php'));
-//            fclose($handle);
+    //            $directory = $path2[0].DIRECTORY_SEPARATOR.'emails'.DIRECTORY_SEPARATOR.$status->template.DIRECTORY_SEPARATOR;
+    //
+    //            $handle = fopen($directory.$template.'.blade.php', 'r');
+    //            $contents = fread($handle, filesize($directory.$template.'.blade.php'));
+    //            fclose($handle);
 
-            $template = TemplateType::where('name', '=', $template)->first();
+                $template = TemplateType::where('name', '=', $template)->first();
 
             $set = \App\Model\Common\TemplateSet::where('name', '=', $status->template)->first();
 
@@ -213,51 +222,46 @@ class PhpMailController extends Controller
 
             $data = [$user, $agent, $ticket_number, $content, $from, $ticket_agent_name, $ticket_client_name, $ticket_client_email, $ticket_body, $ticket_assigner, $ticket_link_with_number, $system_error, $agent_sign, $department_sign, $password_reset_link, $email_address, $user_password, $system_from, $system_link];
 
-            // dd($variables,$data,$contents);
-            // $messagebody = str_replace($variables, $data, $contents);
+                // dd($variables,$data,$contents);
+                // $messagebody = str_replace($variables, $data, $contents);
 
-            foreach ($variables as $key => $variable) {
-                $messagebody = str_replace($variables[$key], $data[$key], $contents);
+                foreach ($variables as $key => $variable) {
+                    $messagebody = str_replace($variables[$key], $data[$key], $contents);
+                    // dd($messagebody);
+
+                    $contents = $messagebody;
+                }
+
                 // dd($messagebody);
-
-                $contents = $messagebody;
-            }
-
-            // dd($messagebody);
-            //$mail->SMTPDebug = 3;                // Enable verbose debug output
-            if ($protocol == 'smtp') {
-                $mail->isSMTP();                   // Set mailer to use SMTP
-                $mail->Host = $host;               // Specify main and backup SMTP servers
-                $mail->SMTPAuth = true;            // Enable SMTP authentication
-                $mail->Username = $username;       // SMTP username
-                $mail->Password = $password;       // SMTP password
-                $mail->SMTPSecure = $smtpsecure;   // Enable TLS encryption, `ssl` also accepted
-                $mail->Port = $port;               // TCP port to connect to
-                $mail->setFrom($username, $fromname);
-            } elseif ($protocol == 'mail') {
-                $mail->IsSendmail();               // telling the class to use SendMail transport
-                if ($username == $fromname) {
-                    $mail->setFrom($username);
-                } else {
+                //$mail->SMTPDebug = 3;                // Enable verbose debug output
+                if ($protocol == 'smtp') {
+                    $mail->isSMTP();                   // Set mailer to use SMTP
+                    $mail->Host = $host;               // Specify main and backup SMTP servers
+                    $mail->SMTPAuth = true;            // Enable SMTP authentication
+                    $mail->Username = $username;       // SMTP username
+                    $mail->Password = $password;       // SMTP password
+                    $mail->SMTPSecure = $smtpsecure;   // Enable TLS encryption, `ssl` also accepted
+                    $mail->Port = $port;               // TCP port to connect to
                     $mail->setFrom($username, $fromname);
+                } elseif ($protocol == 'mail') {
+                    $mail->IsSendmail();               // telling the class to use SendMail transport
+                    if ($username == $fromname) {
+                        $mail->setFrom($username);
+                    } else {
+                        $mail->setFrom($username, $fromname);
+                    }
                 }
-            }
             $mail->addAddress($recipants);         // Add a recipient
-            // Name is optional
-            // $mail->addReplyTo('sada059@gmail.com', 'Information');
-            // Optional name
-            $mail->isHTML(true);                   // Set email format to HTML
-            if ($cc != null) {
-                foreach ($cc as $collaborator) {
-                    //mail to collaborators
-                    $collab_user_id = $collaborator->user_id;
-                    $user_id_collab = User::where('id', '=', $collab_user_id)->first();
-                    $collab_email = $user_id_collab->email;
-                    $mail->addCC($collab_email);
+                $mail->isHTML(true);                   // Set email format to HTML
+                if ($cc != null) {
+                    foreach ($cc as $collaborator) {
+                        //mail to collaborators
+                        $collab_user_id = $collaborator->user_id;
+                        $user_id_collab = User::where('id', '=', $collab_user_id)->first();
+                        $collab_email = $user_id_collab->email;
+                        $mail->addCC($collab_email);
+                    }
                 }
-            }
-
-//            $mail->addBCC($bc);
 
             if ($attachment != null) {
                 $size = count($message['attachments']);
@@ -268,24 +272,60 @@ class PhpMailController extends Controller
                     $mail->addAttachment($file_path, $file_name);
                 }
             }
-
-            $mail->Subject = utf8_decode($subject);
+            
+            // inline images embedded as attachments
+            if ($add_embedded_images != null) {
+                    // dd($add_embedded_images);
+                    foreach ($add_embedded_images as $add_embedded_image) {
+                        if(isset($add_embedded_image->id)) {
+                            $cid = $add_embedded_image->id;
+                        } else {
+                            $cid = null;
+                        }
+                        if(isset($add_embedded_image->name)) {
+                            $file_name = $add_embedded_image->name;
+                        } else {
+                            $file_name = null;
+                        }
+                        if(isset($add_embedded_image->filePath)) {
+                            $file_path = $add_embedded_image->filePath;
+                        } else {
+                            $file_path = null;
+                        }
+                        if(isset($add_embedded_image->disposition)) {
+                            if($add_embedded_image->disposition == 'INLINE') {
+                                $mail->AddEmbeddedImage($file_path, $cid, $file_name);
+                            } else {
+                                $mail->addAttachment($file_path, $file_name);       
+                            }
+                        } else {
+                            $file_path = $add_embedded_image->getRealPath();
+                            $file_name = $add_embedded_image->getClientOriginalName();
+                            $mail->addAttachment($file_path, $file_name);
+                        }
+                    }
+            }
+            
+            $mail->CharSet = 'utf8';
+            $mail->Subject = $subject;
             if ($template == 'ticket-reply-agent') {
                 $line = '---Reply above this line--- <br/><br/>';
-                $mail->Body = utf8_decode($line.$messagebody);
+                $body = $line.$messagebody;
             } else {
-                $mail->Body = utf8_decode($messagebody);
+                $body = $messagebody;
             }
-
-            // $mail->AltBody = $altbody;
+            $rtl = CommonSettings::where('option_name', '=', 'enable_rtl')->first();
+            if ($rtl->option_value == 1) {
+                $mail->ContentType = 'text/html';
+                $body = '<html dir="rtl" xml:lang="ar" lang="ar"><head></head><body dir="rtl">'.$body.'</body></html>';
+            } else {
+            }
+            $mail->Body = nl2br($body);
 
             if (!$mail->send()) {
                 return;
-                // echo 'Message could not be sent.';
-                // echo 'Mailer Error: '.$mail->ErrorInfo;
             } else {
                 return 1;
-                // echo 'Message has been sent';
             }
         }
     }
@@ -297,121 +337,128 @@ class PhpMailController extends Controller
      */
     public function sendEmail($from, $to, $message)
     {
-        $from_address = $this->fetch_smtp_details($from);
+        try {
+            $from_address = $this->fetch_smtp_details($from);
+            if ($from_address == null) {
+                return $from_address;
+            } else {
+                $username = $from_address->email_address;
+                $fromname = $from_address->email_name;
+                $password = \Crypt::decrypt($from_address->password);
+                $smtpsecure = $from_address->sending_encryption;
+                $host = $from_address->sending_host;
+                $port = $from_address->sending_port;
+                $protocol = $from_address->sending_protocol;
 
-        $username = $from_address->email_address;
-        $fromname = $from_address->email_name;
-        $password = \Crypt::decrypt($from_address->password);
-        $smtpsecure = $from_address->sending_encryption;
-        $host = $from_address->sending_host;
-        $port = $from_address->sending_port;
+                if (isset($to['email'])) {
+                    $recipants = $to['email'];
+                } else {
+                    $recipants = null;
+                }
+                if (isset($to['name'])) {
+                    $recipantname = $to['name'];
+                } else {
+                    $recipantname = null;
+                }
+                if (isset($to['cc'])) {
+                    $cc = $to['cc'];
+                } else {
+                    $cc = null;
+                }
+                if (isset($to['bc'])) {
+                    $bc = $to['bc'];
+                } else {
+                    $bc = null;
+                }
+                if (isset($message['subject'])) {
+                    $subject = $message['subject'];
+                } else {
+                    $subject = null;
+                }
+                if (isset($message['body'])) {
+                    $content = $message['body'];
+                } else {
+                    $content = null;
+                }
+                if (isset($message['scenario'])) {
+                    $template = $message['scenario'];
+                } else {
+                    $template = null;
+                }
+                if (isset($message['attachments'])) {
+                    $attachment = $message['attachments'];
+                } else {
+                    $attachment = null;
+                }
 
-        if (isset($to['email'])) {
-            $recipants = $to['email'];
-        } else {
-            $recipants = null;
-        }
-        if (isset($to['name'])) {
-            $recipantname = $to['name'];
-        } else {
-            $recipantname = null;
-        }
-        if (isset($to['cc'])) {
-            $cc = $to['cc'];
-        } else {
-            $cc = null;
-        }
-        if (isset($to['bc'])) {
-            $bc = $to['bc'];
-        } else {
-            $bc = null;
-        }
-        if (isset($message['subject'])) {
-            $subject = $message['subject'];
-        } else {
-            $subject = null;
-        }
-        if (isset($message['body'])) {
-            $content = $message['body'];
-        } else {
-            $content = null;
-        }
-        if (isset($message['scenario'])) {
-            $template = $message['scenario'];
-        } else {
-            $template = null;
-        }
-        if (isset($message['attachments'])) {
-            $attachment = $message['attachments'];
-        } else {
-            $attachment = null;
-        }
+                // template variables
+                if (Auth::user()) {
+                    $agent = Auth::user()->user_name;
+                } else {
+                    $agent = null;
+                }
 
-        // template variables
-        if (Auth::user()) {
-            $agent = Auth::user()->user_name;
-        } else {
-            $agent = null;
-        }
+                $system_link = url('/');
 
-        $system_link = url('/');
+                $system_from = $this->company();
 
-        $system_from = $this->company();
+                $mail = new \PHPMailer();
 
-        $mail = new \PHPMailer();
+                $status = \DB::table('settings_email')->first();
 
-        $status = \DB::table('settings_email')->first();
-
-        // dd($messagebody);
-        //$mail->SMTPDebug = 3;                               // Enable verbose debug output
-
-        $mail->isSMTP();                                      // Set mailer to use SMTP
-        $mail->Host = $host;  // Specify main and backup SMTP servers
-        $mail->SMTPAuth = true;                               // Enable SMTP authentication
-        $mail->Username = $username;                 // SMTP username
-        $mail->Password = $password;                           // SMTP password
-        $mail->SMTPSecure = $smtpsecure;                            // Enable TLS encryption, `ssl` also accepted
-        $mail->Port = $port;                                    // TCP port to connect to
-
-        $mail->setFrom($username, $fromname);
-        $mail->addAddress($recipants);     // Add a recipient
-        // Name is optional
-        // $mail->addReplyTo('sada059@gmail.com', 'Information');
-        // Optional name
-        $mail->isHTML(true);                                  // Set email format to HTML
-        if ($cc != null) {
-            foreach ($cc as $collaborator) {
-                //mail to collaborators
-                $collab_user_id = $collaborator->user_id;
-                $user_id_collab = User::where('id', '=', $collab_user_id)->first();
-                $collab_email = $user_id_collab->email;
-                $mail->addCC($collab_email);
+                // dd($messagebody);
+                //$mail->SMTPDebug = 3;                               // Enable verbose debug output
+                if ($protocol == 'smtp') {
+                    $mail->isSMTP();                   // Set mailer to use SMTP
+                    $mail->Host = $host;               // Specify main and backup SMTP servers
+                    $mail->SMTPAuth = true;            // Enable SMTP authentication
+                    $mail->Username = $username;       // SMTP username
+                    $mail->Password = $password;       // SMTP password
+                    $mail->SMTPSecure = $smtpsecure;   // Enable TLS encryption, `ssl` also accepted
+                    $mail->Port = $port;               // TCP port to connect to
+                    $mail->setFrom($username, $fromname);
+                } elseif ($protocol == 'mail') {
+                    $mail->IsSendmail();               // telling the class to use SendMail transport
+                    if ($username == $fromname) {
+                        $mail->setFrom($username);
+                    } else {
+                        $mail->setFrom($username, $fromname);
+                    }
+                }
+                $mail->addAddress($recipants);     // Add a recipient
+                // Name is optional
+                // $mail->addReplyTo('sada059@gmail.com', 'Information');
+                // Optional name
+                $mail->isHTML(true);                                  // Set email format to HTML
+                if ($cc != null) {
+                    foreach ($cc as $collaborator) {
+                        //mail to collaborators
+                        $collab_user_id = $collaborator->user_id;
+                        $user_id_collab = User::where('id', '=', $collab_user_id)->first();
+                        $collab_email = $user_id_collab->email;
+                        $mail->addCC($collab_email);
+                    }
+                }
+                if ($attachment != null) {
+                    $size = count($message['attachments']);
+                    $attach = $message['attachments'];
+                    for ($i = 0; $i < $size; $i++) {
+                        $file_path = $attach[$i]->getRealPath();
+                        $file_name = $attach[$i]->getClientOriginalName();
+                        $mail->addAttachment($file_path, $file_name);
+                    }
+                }
+                $mail->CharSet = 'utf8';
+                $mail->Subject = $subject;
+                $mail->Body = $content;
+                if (!$mail->send()) {
+                } else {
+                }
             }
-        }
-
-        $mail->addBCC($bc);
-
-        if ($attachment != null) {
-            $size = count($message['attachments']);
-            $attach = $message['attachments'];
-            for ($i = 0; $i < $size; $i++) {
-                $file_path = $attach[$i]->getRealPath();
-                $file_name = $attach[$i]->getClientOriginalName();
-                $mail->addAttachment($file_path, $file_name);
+        } catch (Exception $e) {
+            if ($e instanceof ErrorException) {
+                return \Lang::get('lang.outgoing_email_failed');
             }
-        }
-
-        $mail->Subject = utf8_decode($subject);
-
-        $mail->Body = utf8_decode($content);
-
-        // $mail->AltBody = $altbody;
-
-        if (!$mail->send()) {
-            //            echo 'Message could not be sent.';
-//            echo 'Mailer Error: ' . $mail->ErrorInfo;
-        } else {
-            //            echo 'Message has been sent';
         }
     }
 

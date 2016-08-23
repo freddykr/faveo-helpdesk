@@ -116,6 +116,12 @@ class DepartmentController extends Controller
             /* Succes And Failure condition */
             /*  Check Whether the function Success or Fail */
             if ($department->save() == true) {
+                if ($request->input('sys_department') == 'on') {
+                    DB::table('settings_system')
+                            ->where('id', 1)
+                            ->update(['department' => $department->id]);
+                }
+
                 return redirect('departments')->with('success', Lang::get('lang.department_created_sucessfully'));
             } else {
                 return redirect('departments')->with('fails', Lang::get('lang.failed_to_create_department'));
@@ -144,9 +150,9 @@ class DepartmentController extends Controller
     {
         try {
             $sys_department = \DB::table('settings_system')
-                               ->select('department')
-                               ->where('id', '=', 1)
-                               ->first();
+                    ->select('department')
+                    ->where('id', '=', 1)
+                    ->first();
             $slas = $sla->get();
             $user = $user->where('primary_dpt', $id)->get();
             $emails = $email->get();
@@ -198,8 +204,8 @@ class DepartmentController extends Controller
             }
             if ($request->input('sys_department') == 'on') {
                 DB::table('settings_system')
-                ->where('id', 1)
-                ->update(['department' => $id]);
+                        ->where('id', 1)
+                        ->update(['department' => $id]);
             }
             if ($departments->fill($request->except('group_access', 'manager', 'sla'))->save()) {
                 return redirect('departments')->with('success', Lang::get('lang.department_updated_sucessfully'));
@@ -223,6 +229,7 @@ class DepartmentController extends Controller
     public function destroy($id, Department $department, Group_assign_department $group_assign_department, System $system, Tickets $tickets)
     {
         // try {
+
         $system = $system->where('id', '=', '1')->first();
         if ($system->department == $id) {
             return redirect('departments')->with('fails', Lang::get('lang.you_cannot_delete_default_department'));

@@ -52,7 +52,7 @@ class MailController extends Controller
         if ($settings_email->first()->email_fetching == 1) {
             if ($settings_email->first()->all_emails == 1) {
                 // $helptopic = $this->TicketController->default_helptopic();
-// $sla = $this->TicketController->default_sla();
+                // $sla = $this->TicketController->default_sla();
                 $email = $emails->get();
                 foreach ($email as $e_mail) {
                     if ($e_mail->fetching_status == 1) {
@@ -95,17 +95,34 @@ class MailController extends Controller
                         }
                         $imap_config = '{'.$host.':'.$port.$protocol.'}INBOX';
                         $password = Crypt::decrypt($e_mail->password);
-                        $mailbox = new ImapMailbox($imap_config, $e_mail->email_address, $password, __DIR__);
+                        try {
+                            $mailbox = new ImapMailbox($imap_config, $e_mail->email_address, $password, __DIR__);
+                        } catch (\PhpImap\Exception $e) {
+                            echo 'Connection error';
+                        }
                         $mails = [];
-                        $mailsIds = $mailbox->searchMailBox('SINCE '.date('d-M-Y', strtotime('-1 day')));
+                        try {
+                            $mailsIds = $mailbox->searchMailBox('SINCE '.date('d-M-Y', strtotime('-1 day')));
+                        } catch (\PhpImap\Exception $e) {
+                            echo 'Connection error';
+                        }
                         if (!$mailsIds) {
                             die('Mailbox is empty');
                         }
                         foreach ($mailsIds as $mailId) {
-                            $overview = $mailbox->get_overview($mailId);
+                            try {
+                                $overview = $mailbox->get_overview($mailId);
+                            } catch (Exception $e) {
+                                return \Lang::get('lang.unable_to_fetch_emails');
+                            }
                             $var = $overview[0]->seen ? 'read' : 'unread';
                             if ($var == 'unread') {
                                 $mail = $mailbox->getMail($mailId);
+                                try {
+                                    $mail = $mailbox->getMail($mailId);
+                                } catch (\PhpImap\Exception $e) {
+                                    echo 'Connection error';
+                                }
                                 if ($settings_email->first()->email_collaborator == 1) {
                                     $collaborator = $mail->cc;
                                 } else {
@@ -121,14 +138,24 @@ class MailController extends Controller
                                 }
                                 if ($body == null) {
                                     $attach = $mail->getAttachments();
-                                    $path = $attach['html-body']->filePath;
-                                    if ($path == null) {
-                                        $path = $attach['text-body']->filePath;
+                                    if (is_array($attach)) {
+                                        if (array_key_exists('html-body', $attach)) {
+                                            $path = $attach['html-body']->filePath;
+                                        }
+                                        if ($path == null) {
+                                            if (array_key_exists('text-body', $attach)) {
+                                                $path = $attach['text-body']->filePath;
+                                            }
+                                        }
+                                        if ($path) {
+                                            $body = file_get_contents($path);
+                                        }
+                                        if ($body) {
+                                            $body = self::trimTableTag($body);
+                                        } else {
+                                            $body = '';
+                                        }
                                     }
-
-                                    $body = file_get_contents($path);
-                                    //dd($body);
-                                    $body = self::trimTableTag($body);
                                 }
 //                                if ($body == null) {
 //                                    $body = $mailbox->backup_getmail($mailId);
@@ -140,7 +167,7 @@ class MailController extends Controller
                                 $date = $date_time[1].'-'.$date_time[2].'-'.$date_time[3].' '.$date_time[4];
                                 $date = date('Y-m-d H:i:s', strtotime($date));
                                 if (isset($mail->subject)) {
-                                    $subject = utf8_decode($mail->subject);
+                                    $subject = $mail->subject;
                                 } else {
                                     $subject = 'No Subject';
                                 }
@@ -155,58 +182,58 @@ class MailController extends Controller
                                 $form_data = null;
                                 $team_assign = null;
                                 $ticket_status = null;
-                                $result = $this->TicketWorkflowController->workflow($fromaddress, $fromname, $subject, $body, $phone, $phonecode, $mobile_number, $helptopic, $sla, $priority, $source, $collaborator, $dept, $assign, $team_assign, $ticket_status, $form_data, $auto_response);
-// dd($result);
+                                $result = $this->TicketWorkflowController->workflow($fromaddress, $fromname, $subject, $body, $phone, $phonecode, $mobile_number, $helptopic, $sla, $priority, $source, $collaborator, $dept, $assign, $team_assign, $ticket_status, $form_data, $auto_response, $mail->getAttachments());
+
                                 if ($result[1] == true) {
                                     $ticket_table = Tickets::where('ticket_number', '=', $result[0])->first();
                                     $thread_id = Ticket_Thread::where('ticket_id', '=', $ticket_table->id)->max('id');
-// $thread_id = Ticket_Thread::whereRaw('id = (select max(`id`) from ticket_thread)')->first();
+
                                     $thread_id = $thread_id;
                                     foreach ($mail->getAttachments() as $attachment) {
                                         $support = 'support';
-// echo $_SERVER['DOCUMENT_ROOT'];
+
                                         $dir_img_paths = __DIR__;
                                         $dir_img_path = explode('/code', $dir_img_paths);
-// dd($attachment->filePath);
-                                        $filepath = explode('../../../../../public', $attachment->filePath);
-// var_dump($attachment->filePath);
-// dd($filepath);
-// $path = $dir_img_path[0]."/code/public/".$filepath[1];
-                                        $path = public_path().$filepath[1];
-// dd($path);
-                                        $filesize = filesize($path);
-                                        $file_data = file_get_contents($path);
-                                        $ext = pathinfo($attachment->filePath, PATHINFO_EXTENSION);
-                                        $imageid = $attachment->id;
-                                        $string = str_replace('-', '', $attachment->name);
-                                        $filename = explode('src', $attachment->filePath);
-                                        $filename = str_replace('\\', '', $filename);
-                                        $body = str_replace('cid:'.$imageid, $filepath[1], $body);
-                                        $pos = strpos($body, $filepath[1]);
-                                        if ($pos == false) {
-                                            if ($settings_email->first()->attachment == 1) {
+
+                                        $filepath = explode('..'.DIRECTORY_SEPARATOR.'..'.DIRECTORY_SEPARATOR.'..'.DIRECTORY_SEPARATOR.'..'.DIRECTORY_SEPARATOR.'..'.DIRECTORY_SEPARATOR.'public', $attachment->filePath);
+
+                                        if ($filepath[1]) {
+                                            $path = public_path().$filepath[1];
+
+                                            $filesize = filesize($path);
+                                            $file_data = file_get_contents($path);
+                                            $ext = pathinfo($attachment->filePath, PATHINFO_EXTENSION);
+                                            $imageid = $attachment->id;
+                                            $string = str_replace('-', '', $attachment->name);
+                                            $filename = explode('src', $attachment->filePath);
+                                            $filename = str_replace('\\', '', $filename);
+                                            $body = str_replace('cid:'.$imageid, $filepath[1], $body);
+                                            $pos = strpos($body, $filepath[1]);
+                                            if ($pos == false) {
+                                                if ($settings_email->first()->attachment == 1) {
+                                                    $upload = new Ticket_attachments();
+                                                    $upload->file = $file_data;
+                                                    $upload->thread_id = $thread_id;
+                                                    $upload->name = $filepath[1];
+                                                    $upload->type = $ext;
+                                                    $upload->size = $filesize;
+                                                    $upload->poster = 'ATTACHMENT';
+                                                    $upload->save();
+                                                }
+                                            } else {
                                                 $upload = new Ticket_attachments();
                                                 $upload->file = $file_data;
                                                 $upload->thread_id = $thread_id;
                                                 $upload->name = $filepath[1];
                                                 $upload->type = $ext;
                                                 $upload->size = $filesize;
-                                                $upload->poster = 'ATTACHMENT';
+                                                $upload->poster = 'INLINE';
                                                 $upload->save();
                                             }
-                                        } else {
-                                            $upload = new Ticket_attachments();
-                                            $upload->file = $file_data;
-                                            $upload->thread_id = $thread_id;
-                                            $upload->name = $filepath[1];
-                                            $upload->type = $ext;
-                                            $upload->size = $filesize;
-                                            $upload->poster = 'INLINE';
-                                            $upload->save();
+                                            unlink($path);
                                         }
-                                        unlink($path);
                                     }
-                                    $body = Encoding::fixUTF8($body);
+                                    $body = $body;
                                     $thread = Ticket_Thread::where('id', '=', $thread_id)->first();
                                     $thread->body = $this->separate_reply($body);
                                     $thread->save();

@@ -16,9 +16,11 @@ $thread = App\Model\helpdesk\Ticket\Ticket_Thread::where('ticket_id', '=', \Cryp
             </div> 
             <div class="col-md-3">
                 <div class="pull-right">
+
                     <!-- <button type="button" class="btn btn-default"><i class="fa fa-edit" style="color:green;"> </i> Edit</button> -->                            
                     {{-- <button type="button" class="btn btn-default"><i class="fa fa-print" style="color:blue;"> </i> {!! link_to_route('ticket.print','Print',[$tickets->id]) !!}</button> --}}
                     <!-- </div> -->
+                    @if( $common_setting->status == '1')
                     <div class="btn-group"> 
                         <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown"><i class="fa fa-exchange" style="color:teal;"> </i> 
                             {!! Lang::get('lang.change_status') !!} <span class="caret"></span>
@@ -30,7 +32,7 @@ $thread = App\Model\helpdesk\Ticket\Ticket_Thread::where('ticket_id', '=', \Cryp
                             <li><a href="#" id="close"><i class="fa fa-check" style="color:#15F109;"> </i>{!! Lang::get('lang.close') !!}</a></li>
                             <li><a href="#" id="resolved"><i class="fa fa-check-circle " style="color:#0EF1BE;"> </i> {!! Lang::get('lang.resolved') !!}</a></li>
                         </ul>
-                    </div>
+                    </div>@endif
                     {!! Form::close() !!}
                 </div>
             </div>
@@ -187,33 +189,40 @@ foreach ($conversations as $conversation) {
         $body = $conversation->body;
         $attachments = App\Model\helpdesk\Ticket\Ticket_attachments::where('thread_id', '=', $conversation->id)->orderBy('id', 'DESC')->get();
         foreach ($attachments as $attachment) {
-            if ($attachment->type == 'pdf') {
-                
-            } elseif ($attachment->type == 'docx') {
-                
-            } else {
-                $image = @imagecreatefromstring($attachment->file);
-                ob_start();
-                imagejpeg($image, null, 80);
-                $data = ob_get_contents();
-                ob_end_clean();
-                $var = '<img src="data:image/jpg;base64,' . base64_encode($data) . '" />';
-                $body = str_replace($attachment->name, "data:image/jpg;base64," . base64_encode($data), $body);
+            // $i++;
+                                            try {
+                                                if ($attachment->type == 'jpg' || $attachment->type == 'png' || $attachment->type == 'PNG' || $attachment->type == 'JPG' || $attachment->type == 'jpeg' || $attachment->type == 'JPEG' || $attachment->type == 'gif' || $attachment->type == 'GIF') {
+                                                    if($attachment->size > 0) {
+                                                        $image = @imagecreatefromstring($attachment->file);
+                                                        if($image == false) {
+                                                        } else {
+                                                            ob_start();
+                                                            imagejpeg($image, null, 80);
+                                                            $data = ob_get_contents();
+                                                            ob_end_clean();
+                                                            $var = '<img style="max-width:200px;max-height:200px;" src="data:image/' . $attachment->type . ';base64,' . base64_encode($data) . '" />';
 
-                $string = $body;
-                $start = "<head>";
-                $end = "</head>";
-                if (strpos($string, $start) == false || strpos($string, $start) == false) {
-                    
-                } else {
-                    $ini = strpos($string, $start);
-                    $ini += strlen($start);
-                    $len = strpos($string, $end, $ini) - $ini;
-                    $parsed = substr($string, $ini, $len);
-                    $body2 = $parsed;
-                    $body = str_replace($body2, " ", $body);
-                }
-            }
+                                                            $body = str_replace($attachment->name, "data:image/" . $attachment->type . ";base64," . base64_encode($data), $body);
+                                                            $string = $body;
+                                                            $start = "<head>";
+                                                            $end = "</head>";
+                                                            if (strpos($string, $start) == false || strpos($string, $start) == false) {
+
+                                                            } else {
+                                                                $ini = strpos($string, $start);
+                                                                $ini += strlen($start);
+                                                                $len = strpos($string, $end, $ini) - $ini;
+                                                                $parsed = substr($string, $ini, $len);
+                                                                $body2 = $parsed;
+                                                                $body = str_replace($body2, " ", $body);
+                                                            }
+                                                        }
+                                                    }
+                                                } else {
+                                                }
+                                            } catch(\Exception $e) {
+
+                                            }
         }
     }
     $string = $body;
@@ -297,24 +306,29 @@ foreach ($conversations as $conversation) {
                     <ul class='mailbox-attachments clearfix'>
                         <?php
                         foreach ($attachments as $attachment) {
-                            $size = $attachment->size;
-                            $units = array('B', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB');
-                            $power = $size > 0 ? floor(log($size, 1024)) : 0;
-                            $value = number_format($size / pow(1024, $power), 2, '.', ',') . ' ' . $units[$power];
-                            if ($attachment->poster == 'ATTACHMENT') {
-                                if ($attachment->type == 'jpg' || $attachment->type == 'JPG' || $attachment->type == 'jpeg' || $attachment->type == 'JPEG' || $attachment->type == 'png' || $attachment->type == 'PNG' || $attachment->type == 'gif' || $attachment->type == 'GIF') {
-                                    $image = @imagecreatefromstring($attachment->file);
-                                    ob_start();
-                                    imagejpeg($image, null, 80);
-                                    $data = ob_get_contents();
-                                    ob_end_clean();
-                                    $var = '<a href="' . URL::route('image', array('image_id' => $attachment->id)) . '" target="_blank"><img style="max-width:200px;height:133px;" src="data:image/jpg;base64,' . base64_encode($data) . '"/></a>';
-                                    echo '<li style="background-color:#f4f4f4;"><span class="mailbox-attachment-icon has-img">' . $var . '</span><div class="mailbox-attachment-info"><b style="word-wrap: break-word;">' . $attachment->name . '</b><br/><p>' . $value . '</p></div></li>';
-                                } else {
-                                    $var = '<a style="max-width:200px;height:133px;color:#666;" href="' . URL::route('image', array('image_id' => $attachment->id)) . '" target="_blank"><span class="mailbox-attachment-icon" style="background-color:#fff;">' . strtoupper($attachment->type) . '</span><div class="mailbox-attachment-info"><span ><b style="word-wrap: break-word;">' . $attachment->name . '</b><br/><p>' . $value . '</p></span></div></a>';
-                                    echo '<li style="background-color:#f4f4f4;">' . $var . '</li>';
+                                $size = $attachment->size;
+                                $units = array('B', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB');
+                                $power = $size > 0 ? floor(log($size, 1024)) : 0;
+                                $value = number_format($size / pow(1024, $power), 2, '.', ',') . ' ' . $units[$power];
+                                if ($attachment->poster == 'ATTACHMENT') {
+                                    if ($attachment->type == 'jpg' || $attachment->type == 'JPG' || $attachment->type == 'jpeg' || $attachment->type == 'JPEG' || $attachment->type == 'png' || $attachment->type == 'PNG' || $attachment->type == 'gif' || $attachment->type == 'GIF') {
+                                        $image = @imagecreatefromstring($attachment->file);
+                                        if($image == false) {
+                                            $var = '<a style="max-width:200px;height:133px;color:#666;" href="' . URL::route('image', array('image_id' => $attachment->id)) . '" target="_blank"><span class="mailbox-attachment-icon" style="background-color:#fff;">' . strtoupper($attachment->type) . '</span><div class="mailbox-attachment-info"><span ><b style="word-wrap: break-word;">' . $attachment->name . '</b><br/><p>' . $value . '</p></span></div></a>';
+                                            echo '<li style="background-color:#f4f4f4;">' . $var . '</li>';
+                                        } else {
+                                            ob_start();
+                                            imagejpeg($image, null, 80);
+                                            $data = ob_get_contents();
+                                            ob_end_clean();
+                                            $var = '<a href="' . URL::route('image', array('image_id' => $attachment->id)) . '" target="_blank"><img style="max-width:200px;height:133px;" src="data:image/jpg;base64,' . base64_encode($data) . '"/></a>';
+                                            echo '<li style="background-color:#f4f4f4;"><span class="mailbox-attachment-icon has-img">' . $var . '</span><div class="mailbox-attachment-info"><b style="word-wrap: break-word;">' . $attachment->name . '</b><br/><p>' . $value . '</p></div></li>';
+                                        }
+                                    } else {
+                                        $var = '<a style="max-width:200px;height:133px;color:#666;" href="' . URL::route('image', array('image_id' => $attachment->id)) . '" target="_blank"><span class="mailbox-attachment-icon" style="background-color:#fff;">' . strtoupper($attachment->type) . '</span><div class="mailbox-attachment-info"><span ><b style="word-wrap: break-word;">' . $attachment->name . '</b><br/><p>' . $value . '</p></span></div></a>';
+                                        echo '<li style="background-color:#f4f4f4;">' . $var . '</li>';
+                                    }
                                 }
-                            }
                         }
                         ?>
                     </ul>
@@ -451,7 +465,7 @@ foreach ($conversations as $conversation) {
         //Add text editor
         $("textarea").wysihtml5();
     });
-
+@if( $common_setting->status == '1')
     jQuery(document).ready(function() {
         // Close a ticket
         $('#close').on('click', function(e) {
@@ -538,6 +552,8 @@ foreach ($conversations as $conversation) {
             })
             return false;
         });
+    @endif
+
     });
 </script>
 @stop

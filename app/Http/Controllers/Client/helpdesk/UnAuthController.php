@@ -75,7 +75,7 @@ class UnAuthController extends Controller
             }
             if ($ticket->user_id == $user_details->id) {
                 if ($user_details->role == 'user') {
-                    $username = $user_details->user_name;
+                    $username = $user_details->first_name;
                 } else {
                     $username = $user_details->first_name.' '.$user_details->last_name;
                 }
@@ -279,7 +279,7 @@ class UnAuthController extends Controller
         return Lang::get('lang.your_ticket_has_been').' '.$ticket_status->state;
     }
 
-       //Auto-close tickets
+    //Auto-close tickets
     public function autoCloseTickets()
     {
         $workflow = \App\Model\helpdesk\Workflow\WorkflowClose::whereId(1)->first();

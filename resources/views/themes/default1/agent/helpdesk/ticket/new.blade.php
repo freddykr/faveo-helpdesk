@@ -16,7 +16,10 @@ class="active"
 <h1>{{Lang::get('lang.tickets')}}</h1>
 @stop
 
+
 @section('content')
+
+
 <!-- Main content -->
 {!! Form::open(['route'=>'post.newticket','method'=>'post','id'=>'form']) !!}
 <div class="box box-primary">
@@ -50,8 +53,8 @@ class="active"
             @if($errors->first('email'))
             <li class="error-message-padding">{!! $errors->first('email', ':message') !!}</li>
             @endif
-            @if($errors->first('fullname'))
-            <li class="error-message-padding">{!! $errors->first('fullname', ':message') !!}</li>
+            @if($errors->first('first_name'))
+            <li class="error-message-padding">{!! $errors->first('first_name', ':message') !!}</li>
             @endif
             @if($errors->first('phone'))
             <li class="error-message-padding">{!! $errors->first('phone', ':message') !!}</li>
@@ -61,6 +64,12 @@ class="active"
             @endif
             @if($errors->first('body'))
             <li class="error-message-padding">{!! $errors->first('body', ':message') !!}</li>
+            @endif
+            @if($errors->first('code'))
+            <li class="error-message-padding">{!! $errors->first('code', ':message') !!}</li>
+            @endif
+            @if($errors->first('mobile'))
+            <li class="error-message-padding">{!! $errors->first('mobile', ':message') !!}</li>
             @endif
         </div>
         @endif
@@ -72,19 +81,29 @@ class="active"
 
         <div class="form-group">
             <div class="row">
-                <div class="col-md-6">
+                <div class="col-md-4">
                     <!-- email -->
                     <div class="form-group {{ $errors->has('email') ? 'has-error' : '' }}">
                         {!! Form::label('email',Lang::get('lang.email')) !!} <span class="text-red"> *</span>
-                        {!! Form::text('email',null,['class' => 'form-control']) !!}
+                       <!--  {!! Form::text('email',null,['class' => 'form-control'],['id' => 'email']) !!} -->
+                       <input type="text" name="email" id="email" class="form-control">
                     </div>
                 </div>
 
-                <div class="col-md-6">
+                <div class="col-md-4">
+                    <!-- email -->
+                    <div class="form-group {{ $errors->has('first_name') ? 'has-error' : '' }}">
+                        {!! Form::label('email',Lang::get('lang.first_name')) !!} <span class="text-red"> *</span>
+                       <!--  {!! Form::text('email',null,['class' => 'form-control'],['id' => 'email']) !!} -->
+                       <input type="text" name="first_name" id="first_name" class="form-control">
+                    </div>
+                </div>
+
+                <div class="col-md-4">
                     <!-- full name -->
-                    <div class="form-group {{ $errors->has('fullname') ? 'has-error' : '' }}">
-                        {!! Form::label('fullname',Lang::get('lang.full_name')) !!} <span class="text-red"> *</span>
-                        {!! Form::text('fullname',null,['class' => 'form-control']) !!}
+                    <div class="form-group {{ $errors->has('last_name') ? 'has-error' : '' }}">
+                        {!! Form::label('fullname',Lang::get('lang.last_name')) !!} <span class="text-red"></span>
+                        <input type="text" name="last_name" id="last_name" class="form-control">
                     </div>
                 </div>
             </div>
@@ -92,13 +111,13 @@ class="active"
                 <div class="col-md-1 form-group {{ Session::has('country_code_error') ? 'has-error' : '' }}">
 
                     {!! Form::label('code',Lang::get('lang.country-code')) !!}
-                    {!! Form::text('code',null,['class' => 'form-control', 'placeholder' => $phonecode, 'title' => Lang::get('lang.enter-country-phone-code')]) !!}
+                    {!! Form::text('code',null,['class' => 'form-control', 'id' => 'country_code', 'placeholder' => $phonecode, 'title' => Lang::get('lang.enter-country-phone-code')]) !!}
                 </div>
                 <div class="col-md-5">
                     <!-- phone -->
                     <div class="form-group {{ $errors->has('mobile') ? 'has-error' : '' }}">
                         <label>{!! Lang::get('lang.mobile_number') !!}:</label>
-                        {!! Form::input('number','mobile',null,['class' => 'form-control']) !!}
+                        {!! Form::input('number','mobile',null,['class' => 'form-control', 'id' => 'mobile']) !!}
                         {!! $errors->first('mobile', '<spam class="help-block text-red">:message</spam>') !!}
                     </div>
                 </div>
@@ -106,7 +125,7 @@ class="active"
                     <!-- phone -->
                     <div class="form-group {{ $errors->has('phone') ? 'has-error' : '' }}">
                         <label>{!! Lang::get('lang.phone') !!}:</label>
-                        {!! Form::input('number','phone',null,['class' => 'form-control']) !!}
+                        {!! Form::input('number','phone',null,['class' => 'form-control', 'id' => 'phone_number']) !!}
                         {!! $errors->first('phone', '<spam class="help-block text-red">:message</spam>') !!}
                     </div>
                 </div>
@@ -132,7 +151,7 @@ class="active"
                     <div class="form-group">
                         <label>{!! Lang::get('lang.help_topic') !!}:</label>
                         <!-- helptopic -->
-                        <?php $helptopic = App\Model\helpdesk\Manage\Help_topic::all(); ?>
+                        <?php $helptopic = App\Model\helpdesk\Manage\Help_topic::where('status','=',1)->get(); ?>
                         {!! Form::select('helptopic', ['Helptopic'=>$helptopic->lists('topic','id')->toArray()],null,['class' => 'form-control select']) !!}
                     </div>
                 </div>
@@ -210,7 +229,7 @@ class="active"
             <div class="col-md-1">
             </div>
             <div class="col-md-3">
-                <input type="submit" value="{!! Lang::get('lang.create_ticket') !!}" class="btn btn-primary">
+                <input type="submit" value="{!! Lang::get('lang.create_ticket') !!}" class="btn btn-primary" onclick="this.disabled=true;this.value='Sending, please wait...';this.form.submit();">
             </div>
         </div>
     </div>
@@ -220,6 +239,24 @@ class="active"
     $(function() {
         $("textarea").wysihtml5();
     });
+
+                $(document).ready(function(){                   
+                    $("#email").autocomplete({
+                        source:"{!!URL::route('post.newticket.autofill')!!}",
+                        minLength:1,
+                        select:function(evt, ui) {
+                            // this.form.phone_number.value = ui.item.phone_number;
+                            // this.form.user_name.value = ui.item.user_name;
+                            this.form.first_name.value = ui.item.first_name;
+                            this.form.last_name.value = ui.item.last_name;
+                            this.form.country_code.value = ui.item.country_code;
+                            this.form.phone_number.value = ui.item.phone_number;
+                            this.form.mobile.value = ui.item.mobile;
+                    
+                        }
+                    });
+                });
+
 
     $(document).ready(function() {
         $('#form').submit(function() {
@@ -242,10 +279,8 @@ class="active"
     $(function() {
         $('#datemask').datepicker({changeMonth: true, changeYear: true}).mask('99/99/9999');
     });
-</script>
+
+        
+        </script>
 
 @stop
-
-
-
-

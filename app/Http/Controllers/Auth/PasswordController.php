@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Auth;
 
 // controllers
 use App\Http\Controllers\Common\PhpMailController;
-use App\Http\Controllers\Common\SettingsController;
 use App\Http\Controllers\Controller;
 // request
 use App\User;
@@ -32,7 +31,6 @@ class PasswordController extends Controller
     {
         $this->PhpMailController = $PhpMailController;
         $this->middleware('guest');
-        SettingsController::smtp();
     }
 
     /**
@@ -54,6 +52,7 @@ class PasswordController extends Controller
     {
         $date = date('Y-m-d H:i:s');
         $this->validate($request, ['email' => 'required|email']);
+        \Event::fire('reset.password', []);
         $user = User::where('email', '=', $request->only('email'))->first();
         if (isset($user)) {
             $user1 = $user->email;
@@ -67,11 +66,11 @@ class PasswordController extends Controller
             } else {
                 $create_password_reset = \DB::table('password_resets')->insert(['email' => $user->email, 'token' => $code, 'created_at' => $date]);
             }
-            $this->PhpMailController->sendmail($from = $this->PhpMailController->mailfrom('1', '0'), $to = ['name' => $user->user_name, 'email' => $user->email], $message = ['subject' => 'Your Password Reset Link', 'scenario' => 'reset-password'], $template_variables = ['user' => $user->user_name, 'email_address' => $user->email, 'password_reset_link' => url('password/reset/'.$code)]);
+            $this->PhpMailController->sendmail($from = $this->PhpMailController->mailfrom('1', '0'), $to = ['name' => $user->user_name, 'email' => $user->email], $message = ['subject' => 'Your Password Reset Link', 'scenario' => 'reset-password'], $template_variables = ['user' => $user->first_name, 'email_address' => $user->email, 'password_reset_link' => url('password/reset/'.$code)]);
 
             return redirect()->back()->with('status', Lang::get('lang.we_have_e-mailed_your_password_reset_link'));
         } else {
-            return redirect()->back()->with('errors', Lang::get("lang.we_can't_find_a_user_with_that_e-mail_address"));
+            return redirect()->back()->with('fails', Lang::get("lang.we_can't_find_a_user_with_that_e-mail_address"));
         }
     }
 }
